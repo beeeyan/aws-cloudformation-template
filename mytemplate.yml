@@ -1,6 +1,14 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Memorandum of setting up AWS environment
 
+# EC2のページでKeyは作成しておくこと
+Parameters:
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instance
+    Type: "AWS::EC2::KeyPair::KeyName"
+#
+# NetworkAclはデフォルトにするものと仮定
+#
 Resources:
 # ------------------------------------------------------------#
 #  VPC
@@ -96,6 +104,22 @@ Resources:
               Value: "test-private-subnet-1d"
 
 # ------------------------------------------------------------#
+# NAT Gateway AZ:A
+# ------------------------------------------------------------#
+    # ELPIP for NAT Gateway
+    NATGatewayAEIP:
+      Type: "AWS::EC2::EIP"
+      Properties:
+        Domain: vpc
+    # NAT Gateway
+    NATGatewayA:
+      Type: "AWS::EC2::NatGateway"
+      Properties:
+        AllocationId: !GetAtt NATGatewayAEIP.AllocationId
+        # memo : Only one setting
+        SubnetId: !Ref PublicSubnet1a
+
+# ------------------------------------------------------------#
 #  RouteTable
 # ------------------------------------------------------------#
     # Public RouteTable1a
@@ -154,7 +178,8 @@ Resources:
 
 # ------------------------------------------------------------#
 # Routing
-# ------------------------------------------------------------# 
+# ------------------------------------------------------------#
+    # Public
     # PublicRoute1a
     PublicRoute1a:
         Type: "AWS::EC2::Route"
@@ -179,9 +204,18 @@ Resources:
           DestinationCidrBlock: "0.0.0.0/0"
           GatewayId: !Ref InternetGateway
 
+    # Private
+    # PrivateRoute1a
+    PrivateRoute1a:
+      Type: "AWS::EC2::Route"
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable1a
+        DestinationCidrBlock: "0.0.0.0/0"
+        NatGatewayId: !Ref NATGatewayA
+
 # ------------------------------------------------------------#
 # RouteTable Associate
-# ------------------------------------------------------------# 
+# ------------------------------------------------------------#
     # PublicRouteTable Associate Subnet1a
     PublicSubnet1aRouteTableAssociation:
         Type: "AWS::EC2::SubnetRouteTableAssociation"
@@ -223,3 +257,44 @@ Resources:
         Properties:
           SubnetId: !Ref PrivateSubnet1d
           RouteTableId: !Ref PrivateRouteTable1d
+
+# ------------------------------------------------------------#
+# SecurityGroup
+# ------------------------------------------------------------#
+
+    WebInstanceSecurityGroup:
+      Type: 'AWS::EC2::SecurityGroup'
+      Properties:
+        GroupDescription: web and ssh
+        GroupName: web
+        VpcId: !Ref MyVPC
+        SecurityGroupIngress:
+          -
+            IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            CidrIp: 0.0.0.0/0
+          -
+            IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: !GetAtt MyVPC.CidrBlock
+
+# ------------------------------------------------------------#
+# EC2
+# ------------------------------------------------------------#
+
+    WebInstance:
+      Type: 'AWS::EC2::Instance'
+      Properties:
+        InstanceType: t2.micro
+        ImageId: ami-0a1c2ec61571737db
+        SecurityGroupIds:
+          - !Ref WebInstanceSecurityGroup
+        SubnetId: !Ref PrivateSubnet1a
+        KeyName: !Ref KeyName
+        UserData: !Base64 |
+          #!/bin/bash
+          yum -y update
+          yum install -y nginx
+          service nginx start
