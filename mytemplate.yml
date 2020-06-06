@@ -23,15 +23,15 @@ Resources:
 
     # InternetGateway Create
     InternetGateway:
-        Type: "AWS::EC2::InternetGateway"
+        Type: AWS::EC2::InternetGateway
         Properties:
             Tags:
             - Key: Name
-              Value: "test-igw"
+              Value: test-igw
 
     # IGW Attach
     InternetGatewayAttachment:
-        Type: "AWS::EC2::VPCGatewayAttachment"
+        Type: AWS::EC2::VPCGatewayAttachment
         Properties:
             InternetGatewayId: !Ref InternetGateway
             VpcId: !Ref MyVPC
@@ -44,76 +44,76 @@ Resources:
     PublicSubnet1a:
         Type: AWS::EC2::Subnet
         Properties:
-            AvailabilityZone: "ap-northeast-1a"
+            AvailabilityZone: ap-northeast-1a
             CidrBlock: 10.0.110.0/24
             VpcId: !Ref MyVPC
             Tags:
               - Key: Name
-                Value: "test-public-subnet-1a"
+                Value: test-public-subnet-1a
     # Subnet Public1c
     PublicSubnet1c:
         Type: AWS::EC2::Subnet
         Properties:
-            AvailabilityZone: "ap-northeast-1c"
+            AvailabilityZone: ap-northeast-1c
             CidrBlock: 10.0.120.0/24
             VpcId: !Ref MyVPC
             Tags:
             - Key: Name
-              Value: "test-public-subnet-1c"
+              Value: test-public-subnet-1c
     # Subnet Public1d
     PublicSubnet1d:
         Type: AWS::EC2::Subnet
         Properties:
-            AvailabilityZone: "ap-northeast-1d"
+            AvailabilityZone: ap-northeast-1d
             CidrBlock: 10.0.130.0/24
             VpcId: !Ref MyVPC
             Tags:
             - Key: Name
-              Value: "test-public-subnet-1d"
+              Value: test-public-subnet-1d
 
     # Private Subnet
     # Subnet Private1a
     PrivateSubnet1a:
         Type: AWS::EC2::Subnet
         Properties:
-            AvailabilityZone: "ap-northeast-1a"
+            AvailabilityZone: ap-northeast-1a
             CidrBlock: 10.0.10.0/24
             VpcId: !Ref MyVPC
             Tags:
             - Key: Name
-              Value: "test-private-subnet-1a"
+              Value: test-private-subnet-1a
     # Subnet Private1c
     PrivateSubnet1c:
         Type: AWS::EC2::Subnet
         Properties:
-            AvailabilityZone: "ap-northeast-1c"
+            AvailabilityZone: ap-northeast-1c
             CidrBlock: 10.0.20.0/24
             VpcId: !Ref MyVPC
             Tags:
             - Key: Name
-              Value: "test-private-subnet-1c"
+              Value: test-private-subnet-1c
     # Subnet Private1d
     PrivateSubnet1d:
         Type: AWS::EC2::Subnet
         Properties:
-            AvailabilityZone: "ap-northeast-1d"
+            AvailabilityZone: ap-northeast-1d
             CidrBlock: 10.0.30.0/24
             VpcId: !Ref MyVPC
             Tags:
             - Key: Name
-              Value: "test-private-subnet-1d"
+              Value: test-private-subnet-1d
 
 # ------------------------------------------------------------#
 # NAT Gateway AZ:A
 # ------------------------------------------------------------#
     # ELPIP for NAT Gateway
     NATGatewayAEIP:
-      Type: "AWS::EC2::EIP"
+      Type: AWS::EC2::EIP
       Properties:
         Domain: vpc
     # NAT Gateway
     NATGatewayA:
-      Type: "AWS::EC2::NatGateway"
+      Type: AWS::EC2::NatGateway
       Properties:
         AllocationId: !GetAtt NATGatewayAEIP.AllocationId
         # memo : Only one setting
@@ -124,57 +124,57 @@ Resources:
 # ------------------------------------------------------------#
     # Public RouteTable1a
     PublicRouteTable1a:
-        Type: "AWS::EC2::RouteTable"
+        Type: AWS::EC2::RouteTable
         Properties:
           VpcId: !Ref MyVPC
           Tags:
             - Key: Name
-              Value: "test-public-route-1a"
+              Value: test-public-route-1a
     
     # Public RouteTable1c
     PublicRouteTable1c:
-      Type: "AWS::EC2::RouteTable"
+      Type: AWS::EC2::RouteTable
       Properties:
         VpcId: !Ref MyVPC
         Tags:
           - Key: Name
-            Value: "test-public-route-1c"
+            Value: test-public-route-1c
 
     # Public RouteTable1c
     PublicRouteTable1d:
-        Type: "AWS::EC2::RouteTable"
+        Type: AWS::EC2::RouteTable
         Properties:
           VpcId: !Ref MyVPC
           Tags:
             - Key: Name
-              Value: "test-public-route-1d"
+              Value: test-public-route-1d
             
     # Private RouteTable1a
     PrivateRouteTable1a:
-      Type: "AWS::EC2::RouteTable"
+      Type: AWS::EC2::RouteTable
       Properties:
         VpcId: !Ref MyVPC
         Tags:
           - Key: Name
-            Value: "test-private-route-1a"
+            Value: test-private-route-1a
     
     # Private RouteTable1c
     PrivateRouteTable1c:
-      Type: "AWS::EC2::RouteTable"
+      Type: AWS::EC2::RouteTable
       Properties:
         VpcId: !Ref MyVPC
         Tags:
           - Key: Name
-            Value: "test-private-route-1c"
+            Value: test-private-route-1c
 
     # Private RouteTable1d
     PrivateRouteTable1d:
-        Type: "AWS::EC2::RouteTable"
+        Type: AWS::EC2::RouteTable
         Properties:
           VpcId: !Ref MyVPC
           Tags:
             - Key: Name
-              Value: "test-private-route-1d"
+              Value: test-private-route-1d
 
 # ------------------------------------------------------------#
 # Routing
@@ -182,35 +182,35 @@ Resources:
     # Public
     # PublicRoute1a
     PublicRoute1a:
-        Type: "AWS::EC2::Route"
+        Type: AWS::EC2::Route
         Properties:
           RouteTableId: !Ref PublicRouteTable1a
-          DestinationCidrBlock: "0.0.0.0/0"
+          DestinationCidrBlock: 0.0.0.0/0
           GatewayId: !Ref InternetGateway
     
     # PublicRoute1c
     PublicRoute1c:
-      Type: "AWS::EC2::Route"
+      Type: AWS::EC2::Route
       Properties:
         RouteTableId: !Ref PublicRouteTable1c
-        DestinationCidrBlock: "0.0.0.0/0"
+        DestinationCidrBlock: 0.0.0.0/0
         GatewayId: !Ref InternetGateway
 
     # PublicRoute1d
     PublicRoute1d:
-        Type: "AWS::EC2::Route"
+        Type: AWS::EC2::Route
         Properties:
           RouteTableId: !Ref PublicRouteTable1d
-          DestinationCidrBlock: "0.0.0.0/0"
+          DestinationCidrBlock: 0.0.0.0/0
           GatewayId: !Ref InternetGateway
 
     # Private
     # PrivateRoute1a
     PrivateRoute1a:
-      Type: "AWS::EC2::Route"
+      Type: AWS::EC2::Route
       Properties:
         RouteTableId: !Ref PrivateRouteTable1a
-        DestinationCidrBlock: "0.0.0.0/0"
+        DestinationCidrBlock: 0.0.0.0/0
         NatGatewayId: !Ref NATGatewayA
 
 # ------------------------------------------------------------#
@@ -218,42 +218,42 @@ Resources:
 # ------------------------------------------------------------#
     # PublicRouteTable Associate Subnet1a
     PublicSubnet1aRouteTableAssociation:
-        Type: "AWS::EC2::SubnetRouteTableAssociation"
+        Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
           SubnetId: !Ref PublicSubnet1a
           RouteTableId: !Ref PublicRouteTable1a
     
     # PublicRouteTable Associate Subnet1c
     PublicSubnet1cRouteTableAssociation:
-      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
         SubnetId: !Ref PublicSubnet1c
         RouteTableId: !Ref PublicRouteTable1c
 
     # PublicRouteTable Associate Subnet1d
     PublicSubnet1dRouteTableAssociation:
-      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
         SubnetId: !Ref PublicSubnet1d
         RouteTableId: !Ref PublicRouteTable1d
 
     # PrivateRouteTable Associate Subnet1a
     PrivateSubnet1aRouteTableAssociation:
-      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
         SubnetId: !Ref PrivateSubnet1a
         RouteTableId: !Ref PrivateRouteTable1a
     
     # PrivateRouteTable Associate Subnet1c
     PrivateSubnet1cRouteTableAssociation:
-      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
         SubnetId: !Ref PrivateSubnet1c
         RouteTableId: !Ref PrivateRouteTable1c
 
     # PrivateRouteTable Associate Subnet1d
     PrivateSubnet1dRouteTableAssociation:
-        Type: "AWS::EC2::SubnetRouteTableAssociation"
+        Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
           SubnetId: !Ref PrivateSubnet1d
           RouteTableId: !Ref PrivateRouteTable1d
@@ -263,7 +263,7 @@ Resources:
 # ------------------------------------------------------------#
 
     WebInstanceSecurityGroup:
-      Type: 'AWS::EC2::SecurityGroup'
+      Type: AWS::EC2::SecurityGroup
       Properties:
         GroupDescription: web and ssh
         GroupName: web
@@ -285,7 +285,7 @@ Resources:
 # ------------------------------------------------------------#
 
     WebInstance:
-      Type: 'AWS::EC2::Instance'
+      Type: AWS::EC2::Instance
       Properties:
         InstanceType: t2.micro
         ImageId: ami-0a1c2ec61571737db
