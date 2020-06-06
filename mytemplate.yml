@@ -5,7 +5,10 @@ Description: Memorandum of setting up AWS environment
 Parameters:
   KeyName:
     Description: The EC2 Key Pair to allow SSH access to the instance
-    Type: "AWS::EC2::KeyPair::KeyName"
+    Type: AWS::EC2::KeyPair::KeyName
+
+  SSHAccessSourceIP:
+    Type: String
 #
 # NetworkAclはデフォルトにするものと仮定
 #
@@ -257,16 +260,60 @@ Resources:
         Properties:
           SubnetId: !Ref PrivateSubnet1d
           RouteTableId: !Ref PrivateRouteTable1d
-
+# ------------------------------------------------------------#
+#  IAM Role for EC2
+# ------------------------------------------------------------#
+    EC2IAMRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: AWS-role
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - ec2.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Path: /
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+          - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+    
+    EC2InstanceProfile:
+      Type: AWS::IAM::InstanceProfile
+      Properties:
+        Path: /
+        Roles:
+          - Ref: EC2IAMRole
+        InstanceProfileName: web-profile
 # ------------------------------------------------------------#
 # SecurityGroup
 # ------------------------------------------------------------#
 
-    WebInstanceSecurityGroup:
+    # Managed
+    ManagedSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Managed EC2
+        GroupName: Managed SecurityGroup
+        VpcId: !Ref MyVPC
+        Tags:
+          - Key: Name
+            Value: managed-sg
+        # Rule
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: !Ref SSHAccessSourceIP
+
+    WebSecurityGroup:
       Type: AWS::EC2::SecurityGroup
       Properties:
         GroupDescription: web and ssh
-        GroupName: web
+        GroupName: web SecurityGroup
         VpcId: !Ref MyVPC
         SecurityGroupIngress:
           -
@@ -274,27 +321,150 @@ Resources:
             FromPort: 80
             ToPort: 80
             CidrIp: 0.0.0.0/0
-          -
-            IpProtocol: tcp
-            FromPort: 22
-            ToPort: 22
-            CidrIp: !GetAtt MyVPC.CidrBlock
+    
+    # Rule
+    WebSecurityGroupIngress:
+      Type: AWS::EC2::SecurityGroupIngress
+      Properties:
+        IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId
+        GroupId: !GetAtt WebSecurityGroup.GroupId
+
+
+    # ALB
+    ALBSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: ALB
+        GroupName: ALB SecurityGroup
+        VpcId: !Ref MyVPC
+        Tags:
+          - Key: Name
+            Value: alb-sg
+        # Rule
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+        SecurityGroupEgress:
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            DestinationSecurityGroupId: !Ref WebSecurityGroup
 
 # ------------------------------------------------------------#
 # EC2
 # ------------------------------------------------------------#
-
-    WebInstance:
+    # Web
+    WebInstanceA:
       Type: AWS::EC2::Instance
       Properties:
         InstanceType: t2.micro
         ImageId: ami-0a1c2ec61571737db
         SecurityGroupIds:
-          - !Ref WebInstanceSecurityGroup
+          - !Ref WebSecurityGroup
         SubnetId: !Ref PrivateSubnet1a
         KeyName: !Ref KeyName
+        IamInstanceProfile: !Ref EC2InstanceProfile
+        Tags:
+          - Key: Name
+            Value: Web-A
         UserData: !Base64 |
           #!/bin/bash
           yum -y update
           yum install -y nginx
           service nginx start
+    WebInstanceC:
+      Type: AWS::EC2::Instance
+      Properties:
+        InstanceType: t2.micro
+        ImageId: ami-0a1c2ec61571737db
+        SecurityGroupIds:
+          - !Ref WebSecurityGroup
+        SubnetId: !Ref PrivateSubnet1c
+        KeyName: !Ref KeyName
+        IamInstanceProfile: !Ref EC2InstanceProfile
+        Tags:
+          - Key: Name
+            Value: Web-C
+        UserData: !Base64 |
+          #!/bin/bash
+          yum -y update
+          yum install -y nginx
+          service nginx start
+# ------------------------------------------------------------#
+#  Target Group
+# ------------------------------------------------------------#
+
+    TargetGroup:
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties:
+        VpcId: !Ref MyVPC
+        Name: web-tg
+        Protocol: HTTP
+        Port: 80
+        HealthCheckProtocol: HTTP
+        HealthCheckPath: /
+        HealthCheckPort: traffic-port
+        HealthyThresholdCount: 2
+        UnhealthyThresholdCount: 2
+        HealthCheckTimeoutSeconds: 5
+        HealthCheckIntervalSeconds: 10
+        Matcher:
+          HttpCode: 200
+        Tags:
+          - Key: Name
+            Value: web-tg
+        TargetGroupAttributes:
+          - Key: "deregistration_delay.timeout_seconds"
+            Value: 300
+          - Key: "stickiness.enabled"
+            Value: false
+          - Key: "stickiness.type"
+            Value: lb_cookie
+          - Key: "stickiness.lb_cookie.duration_seconds"
+            Value: 86400
+        Targets:
+          - Id: !Ref WebInstanceA
+          - Id: !Ref WebInstanceC
+            Port: 80
+
+# ------------------------------------------------------------#
+#  Internet ALB
+# ------------------------------------------------------------#
+
+    InternetALB:
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Properties:
+        Name: WebALB
+        Tags:
+          - Key: Name
+            Value: WebALB
+        Scheme: internet-facing
+        LoadBalancerAttributes:
+          - Key: deletion_protection.enabled
+            Value: false
+          - Key: idle_timeout.timeout_seconds
+            Value: 60
+        SecurityGroups:
+          - !Ref ALBSecurityGroup
+        Subnets:
+          - !Ref PublicSubnet1a
+          - !Ref PublicSubnet1c
+
+    ALBListener:
+      Type: AWS::ElasticLoadBalancingV2::Listener
+      Properties:
+        DefaultActions:
+          - TargetGroupArn: !Ref TargetGroup
+            Type: forward
+        LoadBalancerArn: !Ref InternetALB
+        Port: 80
+        Protocol: HTTP
