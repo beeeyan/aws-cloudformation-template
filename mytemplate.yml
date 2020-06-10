@@ -3,7 +3,11 @@ Description: Memorandum of setting up AWS environment
 
 # EC2のページでKeyは作成しておくこと
 Parameters:
-  KeyName:
+  WebKeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+  ManagedKeyName:
     Description: The EC2 Key Pair to allow SSH access to the instance
     Type: AWS::EC2::KeyPair::KeyName
 
@@ -216,6 +220,22 @@ Resources:
         DestinationCidrBlock: 0.0.0.0/0
         NatGatewayId: !Ref NATGatewayA
 
+    # PrivateRoute1c
+    PrivateRoute1c:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable1c
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref NATGatewayA
+
+    # PrivateRoute1c
+    PrivateRoute1d:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable1d
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref NATGatewayA
+
 # ------------------------------------------------------------#
 # RouteTable Associate
 # ------------------------------------------------------------#
@@ -309,18 +329,31 @@ Resources:
             ToPort: 22
             CidrIp: !Ref SSHAccessSourceIP
 
+    ManagedWebSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Managed Web EC2
+        GroupName: Managed Web SecurityGroup
+        VpcId: !Ref MyVPC
+        Tags:
+          - Key: Name
+            Value: managed-web-sg
+        # Rule
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: 10.0.110.0/24
+
     WebSecurityGroup:
       Type: AWS::EC2::SecurityGroup
       Properties:
         GroupDescription: web and ssh
-        GroupName: web SecurityGroup
+        GroupName: web-sg
         VpcId: !Ref MyVPC
-        SecurityGroupIngress:
-          -
-            IpProtocol: tcp
-            FromPort: 80
-            ToPort: 80
-            CidrIp: 0.0.0.0/0
+        Tags:
+          - Key: Name
+            Value: web-sg
     
     # Rule
     WebSecurityGroupIngress:
@@ -331,7 +364,6 @@ Resources:
         ToPort: 80
         SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId
         GroupId: !GetAtt WebSecurityGroup.GroupId
-
 
     # ALB
     ALBSecurityGroup:
@@ -362,6 +394,26 @@ Resources:
 # ------------------------------------------------------------#
 # EC2
 # ------------------------------------------------------------#
+    # Maintenance
+    ManagedInstanceA:
+      Type: AWS::EC2::Instance
+      Properties:
+        InstanceType: t2.micro
+        ImageId: ami-0a1c2ec61571737db
+        SecurityGroupIds:
+          - !Ref ManagedSecurityGroup
+        SubnetId: !Ref PublicSubnet1a
+        KeyName: !Ref ManagedKeyName
+        Tags:
+          - Key: Name
+            Value: Maintenance
+
+    ManagedInstanceEIP:
+      Type: AWS::EC2::EIP
+      Properties:
+        Domain: vpc
+        InstanceId: !Ref ManagedInstanceA
+
     # Web
     WebInstanceA:
       Type: AWS::EC2::Instance
@@ -370,17 +422,18 @@ Resources:
         ImageId: ami-0a1c2ec61571737db
         SecurityGroupIds:
           - !Ref WebSecurityGroup
+          - !Ref ManagedWebSecurityGroup
         SubnetId: !Ref PrivateSubnet1a
-        KeyName: !Ref KeyName
+        KeyName: !Ref WebKeyName
         IamInstanceProfile: !Ref EC2InstanceProfile
         Tags:
           - Key: Name
             Value: Web-A
         UserData: !Base64 |
           #!/bin/bash
-          yum -y update
-          yum install -y nginx
-          service nginx start
+          sudo yum -y update
+          sudo amazon-linux-extras install -y nginx1.12
+          sudo service nginx start
     WebInstanceC:
       Type: AWS::EC2::Instance
       Properties:
@@ -388,17 +441,18 @@ Resources:
         ImageId: ami-0a1c2ec61571737db
         SecurityGroupIds:
           - !Ref WebSecurityGroup
+          - !Ref ManagedWebSecurityGroup
         SubnetId: !Ref PrivateSubnet1c
-        KeyName: !Ref KeyName
+        KeyName: !Ref WebKeyName
         IamInstanceProfile: !Ref EC2InstanceProfile
         Tags:
           - Key: Name
             Value: Web-C
         UserData: !Base64 |
           #!/bin/bash
-          yum -y update
-          yum install -y nginx
-          service nginx start
+          sudo yum -y update
+          sudo amazon-linux-extras install -y nginx1.12
+          sudo service nginx start
 # ------------------------------------------------------------#
 #  Target Group
 # ------------------------------------------------------------#
