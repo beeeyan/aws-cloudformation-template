@@ -281,34 +281,6 @@ Resources:
           SubnetId: !Ref PrivateSubnet1d
           RouteTableId: !Ref PrivateRouteTable1d
 # ------------------------------------------------------------#
-#  IAM Role for EC2
-# ------------------------------------------------------------#
-    EC2IAMRole:
-      Type: AWS::IAM::Role
-      Properties:
-        RoleName: AWS-role
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service:
-                  - ec2.amazonaws.com
-              Action:
-                - sts:AssumeRole
-        Path: /
-        ManagedPolicyArns:
-          - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
-          - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
-    
-    EC2InstanceProfile:
-      Type: AWS::IAM::InstanceProfile
-      Properties:
-        Path: /
-        Roles:
-          - Ref: EC2IAMRole
-        InstanceProfileName: web-profile
-# ------------------------------------------------------------#
 # SecurityGroup
 # ------------------------------------------------------------#
 
@@ -425,7 +397,6 @@ Resources:
           - !Ref ManagedWebSecurityGroup
         SubnetId: !Ref PrivateSubnet1a
         KeyName: !Ref WebKeyName
-        IamInstanceProfile: !Ref EC2InstanceProfile
         Tags:
           - Key: Name
             Value: Web-A
@@ -444,7 +415,6 @@ Resources:
           - !Ref ManagedWebSecurityGroup
         SubnetId: !Ref PrivateSubnet1c
         KeyName: !Ref WebKeyName
-        IamInstanceProfile: !Ref EC2InstanceProfile
         Tags:
           - Key: Name
             Value: Web-C
